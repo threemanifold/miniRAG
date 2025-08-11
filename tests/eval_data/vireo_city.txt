@@ -1,0 +1,31 @@
+Vireo City, a mid-size EU municipality, aims to decarbonize its district heating network by 2030, targeting 85% renewable heat by end-2029 under a program called “ThermaGreen.”
+
+Today’s system combines a 1.2 GWth gas CHP plant with three auxiliary gas boilers. The network spans 450 km and serves ~124,000 customer connections.
+
+The future supply stack adds 200 MWth of river-source heat pumps at the Riverside site, 120 MWth of geothermal doublets in the North Basin, and 90 MWth of industrial waste-heat from nearby data centers by 2027.
+
+Thermal storage includes two 200 MWh hot-water tanks and, by 2028, a 1.5 GWh seasonal borehole storage field to shift shoulder-season heat.
+
+To lower losses, flow/return temperatures will drop from 95/60 °C to 75/40 °C. About 18,000 buildings need substation upgrades; the city offers “Delta75” grants to offset costs.
+
+CAPEX totals €1.4 B. Funding: 45% municipal green bonds, 30% EU cohesion grants, 15% via a heat-tariff surcharge (capped at €4/month per average household), and 10% through private PPAs with data centers.
+
+Tariffs introduce a lifeline block covering the first 600 kWh/year with a discounted rate. Low-income households receive a 35% rebate. After 2026, the tariff is indexed to CPI − 1%.
+
+Governance: the utility (ThermaVireo) reports to an oversight board with the city energy office, consumer council, and labor unions. An independent auditor issues quarterly public reports.
+
+Environmental measures project a 640 kt/year CO₂ reduction by 2029. River-water use is closed-loop with fish-protection screens; noise barriers surround Riverside heat-pump units.
+
+Timeline: Phase 1 (2025–2026) builds 80 MW of river heat pumps, the first 200 MWh tank, and launches Delta75. Phase 2 (2027–2028) completes river heat pumps, adds geothermal and waste-heat. Phase 3 (2029–2030) finishes seasonal storage and retires two gas boilers; the CHP remains for peak/backup.
+
+On 2026-02-14, a brine leak during geothermal test drilling paused the program for six weeks. Remediation included wellhead repairs, soil cleanup, and tighter pressure-monitoring thresholds.
+
+Procurement requires ≥30% local content, life-cycle assessment scoring at 20% weight, and fair-labor standards. Data-center waste-heat contracts must ensure compatibility with 85 °C return temperatures.
+
+Resilience planning keeps 100 MW of biomass peakers as backup during extreme cold through 2030, plus 12 school-based emergency heat shelters.
+
+Public engagement features quarterly town halls and an online tariff simulator. Building owners must book substation upgrades 90 days in advance; penalties for missed windows begin 2026-09-01.
+
+KPIs: network heat loss <10% by 2028 (down from 14%), customer complaints <1 per 1,000 customers/month, and 95% completion of building upgrades by 2028.
+
+Legal/permits: the project complies with the EU Taxonomy. The environmental impact assessment was approved on 2025-03-22, conditional on fish-passage upgrades by 2027-06-30.

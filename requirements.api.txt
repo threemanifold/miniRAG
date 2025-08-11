@@ -1,0 +1,12 @@
+fastapi~=0.116.1
+pydantic~=2.11.7
+uvicorn~=0.35.0
+langchain~=0.3.27
+langchain-openai~=0.3.28
+langchain-community
+chromadb
+numpy~=2.3.2
+langchain-core~=0.3.74
+python-multipart~=0.0.17
+requests~=2.32.3
+python-dotenv
