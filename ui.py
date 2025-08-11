@@ -113,7 +113,7 @@ with st.sidebar:
                 else:
                     st.error(f"Build failed: {resp.status_code} {resp.text}")
 
-    k = st.slider("Top‑k chunks", 1, 8, st.session_state.get("k", 5))
+    k = st.slider("Top‑k chunks", 1, 10, st.session_state.get("k", 7))
     st.session_state.k = k
     st.caption("Tip: Delete the existing store before building a new one. Upload files first, then Build.")
 
