@@ -17,5 +17,7 @@ docker run --rm -t \
     python scripts/run_tests.py
   "
 
-echo "==> Tests passed. Building and starting the app (detached)…"
+echo "==> Tests passed. Building and starting the app (detached), then tailing backend logs…"
 docker compose up --build -d
+echo "==> Following backend logs. Press Ctrl+C to stop tailing (containers keep running)."
+docker compose logs -f backend

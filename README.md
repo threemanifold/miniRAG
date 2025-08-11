@@ -51,19 +51,19 @@ This UI is intentionally minimal and designed as an admin panel. The primary goa
 
 - Sample documents and quick questions
   - The `sample_documents/` set can include both publicly available texts and small LLM‑generated texts for quick testing. You can try the following examples:
-  - Example (The Art of War — Sun Tzu) (https://www.gutenberg.org/cache/epub/17405/pg17405.txt)
-    - Q: What five constant factors govern the art of war, according to Sun Tzŭ?
-      A: “The Moral Law; Heaven; Earth; The Commander; Method and discipline.” (Chapter I, Laying Plans)
-    - Q: What does Sun Tzŭ call “supreme excellence” in war?
-      A: “Breaking the enemy’s resistance without fighting.” (Chapter III, Attack by Stratagem)
-  - Example (The Time Machine — H. G. Wells) (https://www.gutenberg.org/cache/epub/35/pg35.txt)
-    - Q: What is the name of the Eloi the Time Traveller rescues and befriends?
-      A: Weena.
-    - Q: Who took the Time Machine, and where was it hidden?
-      A: The Morlocks took it and hid it inside the hollow bronze pedestal beneath the White Sphinx.
-  - Example (Multiple files: `frogs.txt` + `giraffes.txt`)
-    - Q: How tall a giraffe can be and how do frogs communicate?
-      A: Up to about 5.5 m tall, and frogs communicate with distinctive calls.
+  - Example (The Art of War — Sun Tzu) ([link](https://www.gutenberg.org/cache/epub/17405/pg17405.txt))  
+    Q: What five constant factors govern the art of war, according to Sun Tzŭ?  
+    A: “The Moral Law; Heaven; Earth; The Commander; Method and discipline.” (Chapter I, Laying Plans)  
+    Q: What does Sun Tzŭ call “supreme excellence” in war?  
+    A: “Breaking the enemy’s resistance without fighting.” (Chapter III, Attack by Stratagem)
+  - Example (The Time Machine — H. G. Wells) ([link](https://www.gutenberg.org/cache/epub/35/pg35.txt))  
+    Q: What is the name of the Eloi the Time Traveller rescues and befriends?  
+    A: Weena.  
+    Q: Who took the Time Machine, and where was it hidden?  
+    A: The Morlocks took it and hid it inside the hollow bronze pedestal beneath the White Sphinx.
+  - Example (Multiple files: `frogs.txt` + `giraffes.txt`)  
+    Q: How tall a giraffe can be and how do frogs communicate?  
+    A: Up to about 5.5 m tall, and frogs communicate with distinctive calls.
 
 - Guardrails and UX safety
   - Store ID is required. Upload and Build buttons remain disabled until one is provided.

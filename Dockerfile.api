@@ -11,7 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.api.txt /app/requirements.api.txt
-RUN pip install --no-cache-dir -r requirements.api.txt
+# Increase pip network timeout to avoid transient PyPI timeouts during large installs
+ENV PIP_DEFAULT_TIMEOUT=180 PIP_DISABLE_PIP_VERSION_CHECK=1
+RUN python -m pip install --no-cache-dir --default-timeout=180 -r requirements.api.txt
 
 COPY . /app
 
