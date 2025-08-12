@@ -54,6 +54,8 @@ This UI is intentionally minimal and designed as an admin panel. The primary goa
     - Copy‑ready prompts:
       ```text
       What five constant factors govern the art of war, according to Sun Tzŭ?
+      ```
+      ```text
       What does Sun Tzŭ call “supreme excellence” in war?
       ```
     - Expected answers for reference:
@@ -63,6 +65,8 @@ This UI is intentionally minimal and designed as an admin panel. The primary goa
     - Copy‑ready prompts:
       ```text
       What is the name of the Eloi the Time Traveller rescues and befriends?
+      ```
+      ```text
       Who took the Time Machine, and where was it hidden?
       ```
     - Expected answers for reference:
