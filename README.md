@@ -42,49 +42,38 @@ The aim is to demonstrate a clear, robust, and observable RAG pipeline with a mi
 This UI is intentionally minimal and designed as an admin panel. The primary goal is functionality and clarity, with simple guardrails to keep the user on the correct path.
 
 - Core flow (minimal)
-  1. Upload one or more `.txt` files.
-  2. Click "Build Vector Store."
-  3. Ask questions in the chat area (Increase top-k with the slider if an answer can't be found). 
-  4. To start fresh, delete the vector store and return to step 1.
-  5. Optional: In the Evaluation panel, run the built‑in retrieval accuracy test to see Mean/Std Recall and latency.
+  1. Enter a Store ID in the sidebar.
+  2. Upload one or more `.txt` files.
+  3. Click “Build Vector Store.”
+  4. Ask questions in the chat area (Increase top-k with the slider if an answer can't be found). 
+  5. To start fresh, delete the vector store and return to step 1.
+  6. Optional: In the Evaluation panel, run the built‑in retrieval accuracy test to see Mean/Std Recall and latency.
 
 - Sample documents and quick questions
   - The `sample_documents/` set can include both publicly available texts and small LLM‑generated texts for quick testing. You can try the following examples:
   - Example (The Art of War — Sun Tzu) ([link](https://www.gutenberg.org/cache/epub/17405/pg17405.txt))  
-    ```
-    What five constant factors govern the art of war, according to Sun Tzŭ?
-    ```
-    Expected answer: "The Moral Law; Heaven; Earth; The Commander; Method and discipline." (Chapter I, Laying Plans)
-
-    ```
-    What does Sun Tzŭ call "supreme excellence" in war?
-    ```
-    Expected answer: "Breaking the enemy's resistance without fighting." (Chapter III, Attack by Stratagem)
-
+    Q: What five constant factors govern the art of war, according to Sun Tzŭ?  
+    A: “The Moral Law; Heaven; Earth; The Commander; Method and discipline.” (Chapter I, Laying Plans)  
+    Q: What does Sun Tzŭ call “supreme excellence” in war?  
+    A: “Breaking the enemy’s resistance without fighting.” (Chapter III, Attack by Stratagem)
   - Example (The Time Machine — H. G. Wells) ([link](https://www.gutenberg.org/cache/epub/35/pg35.txt))  
-    ```
-    What is the name of the Eloi the Time Traveller rescues and befriends?
-    ```
-    Expected answer: Weena.
-
-    ```
-    Who took the Time Machine, and where was it hidden?
-    ```
-    Expected answer: The Morlocks took it and hid it inside the hollow bronze pedestal beneath the White Sphinx.
-
+    Q: What is the name of the Eloi the Time Traveller rescues and befriends?  
+    A: Weena.  
+    Q: Who took the Time Machine, and where was it hidden?  
+    A: The Morlocks took it and hid it inside the hollow bronze pedestal beneath the White Sphinx.
   - Example (Multiple files: `frogs.txt` + `giraffes.txt`)  
-    ```
-    How tall can a giraffe be and how do frogs communicate?
-    ```
-    Expected answer: Up to about 5.5 m tall, and frogs communicate with distinctive calls.
+    Q: How tall a giraffe can be and how do frogs communicate?  
+    A: Up to about 5.5 m tall, and frogs communicate with distinctive calls.
 
 - Guardrails and UX safety
-  - Delete‑before‑build: Building is disabled if a vector store already exists.
+  - Store ID is required. Upload and Build buttons remain disabled until one is provided.
+  - Delete‑before‑build: Building is disabled if a vector store under the same ID already exists.
   - Upload is disabled while a store exists; delete to change its contents.
+  - Store ID locks after the first successful upload; it unlocks automatically after you delete the store.
   - Responses include tracing headers and the UI displays the search query used by retrieval to aid debugging.
 
-- What you'll see on the screen
-  - Sidebar: API base URL, upload control, Build and Delete actions, Top‑k slider.
+- What you’ll see on the screen
+  - Sidebar: API base URL, Store ID, upload control, Build and Delete actions, Top‑k slider.
   - Chat: ask questions about your documents and view answers.
   - Summaries: concise summaries of retrieved chunks; expandable raw text is available per chunk.
   - Metadata: embeddings model, prompt preview, retrieval strategy, and the rewritten search query.
@@ -147,19 +136,7 @@ Recall@k definition: For each question, recall@k is the fraction of expected inf
 
 ## Further Improvements
 
-### Current Limitations and Scope
-
-Due to time constraints and the scope of this demonstration project, a deliberately minimal RAG architecture was chosen to focus on core functionality and observability. The current implementation makes several simplifying assumptions:
-
-- **No hyperparameter tuning**: The hyperparameters such as embedding models, chunk sizes, overlap ratios, and similarity thresholds are not tuned.
-- **Basic chunking strategy**: Simple character-based chunking without semantic boundary detection or document structure awareness.
-- **Single retrieval strategy**: Only similarity search is implemented, without more sophisticated methods like hybrid search or query expansion.
-- **Limited evaluation dataset**: The built-in evaluation uses a small synthetic dataset sufficient to demonstrate the concept but not large enough for reliable performance verification.
-- **No production optimizations**: Missing features like caching, connection pooling, batch processing, or performance tuning that would be essential in real deployments.
-
-These design choices enable rapid prototyping and clear demonstration of RAG concepts while maintaining code clarity and ease of understanding.
-
-### How to evaluate and iterate in a real‑world setting
+How to evaluate and iterate in a real‑world setting:
 
 - Metrics and procedures
   - Precision@k in addition to Recall@k to penalize irrelevant retrievals.

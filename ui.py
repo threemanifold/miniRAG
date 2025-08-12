@@ -21,10 +21,8 @@ with st.sidebar:
     api_base = st.text_input("API base URL", value=st.session_state.get("api_base", DEFAULT_API))
     st.session_state.api_base = api_base.rstrip("/")
 
-    # Use a fixed store name since stores can't be reused anyway
-    store_id = "default"
-    st.session_state.store_id = store_id
-    
+    # Store selection simplified: single Store ID field, locked when store exists
+    current_store = st.session_state.get("store_id", "")
     # Check if current store exists (per-run) to drive UI state immediately
     def _store_exists(store: str) -> bool:
         try:
@@ -33,7 +31,25 @@ with st.sidebar:
         except requests.RequestException:
             return False
 
+    # Store ID input, then compute existence based on current input
+    store_locked = st.session_state.get("store_locked", False)
+    def sanitize_store_id(raw: str) -> str:
+        s = (raw or "").strip()
+        # Replace any whitespace with underscore
+        s = re.sub(r"\s+", "_", s)
+        # Replace any disallowed characters with underscore to match API validation
+        s = re.sub(r"[^A-Za-z0-9_\-]", "_", s)
+        # Collapse multiple underscores
+        s = re.sub(r"_+", "_", s)
+        # Trim leading/trailing underscores
+        s = s.strip("_")
+        return s
+
+    new_store_input = st.text_input("Store ID", value=current_store, disabled=store_locked)
+    store_id = sanitize_store_id(new_store_input)
+    st.session_state.store_id = store_id
     store_exists = _store_exists(store_id)
+    # Warning removed per request
 
     st.divider()
     st.header("Ingestion")
@@ -49,7 +65,7 @@ with st.sidebar:
         "Upload .txt files",
         type=["txt"],
         accept_multiple_files=True,
-        disabled=store_exists,
+        disabled=store_exists or (not store_id),
         key=f"uploader_{st.session_state.upload_nonce}"
     )
     if up:
@@ -59,6 +75,7 @@ with st.sidebar:
             if resp.ok:
                 saved = resp.json().get("saved", [])
                 st.session_state.last_uploaded_files = saved
+                st.session_state.store_locked = True
                 st.success(f"Uploaded: {', '.join(saved)}")
                 st.session_state.upload_nonce += 1
                 st.rerun()
@@ -69,10 +86,10 @@ with st.sidebar:
         last_list = st.session_state.last_uploaded_files
         st.caption(f"Last upload: {', '.join(last_list)}")
     # Place info warning under success (if any)
-    if store_exists:
+    if store_id and store_exists:
         st.info("Uploading is disabled while a store exists. Delete the store to change its contents.")
 
-    if st.button("📦 Build Vector Store", disabled=store_exists):
+    if st.button("📦 Build Vector Store", disabled=(store_exists or (not store_id))):
         # Policy: Require user to delete existing store before building
         try:
             check = requests.get(f"{st.session_state.api_base}/stores/{store_id}", timeout=15)
@@ -98,13 +115,16 @@ with st.sidebar:
 
     k = st.slider("Top‑k chunks", 1, 10, st.session_state.get("k", 7))
     st.session_state.k = k
-    st.caption("Simple flow: Upload files → Build Vector Store → Ask questions → Delete when done")
+    st.caption("Tip: Delete the existing store before building a new one. Upload files first, then Build.")
 
     if st.button("🗑️ Delete Store"):
         with st.spinner("Deleting…"):
             resp = requests.delete(f"{st.session_state.api_base}/stores/{store_id}", timeout=30)
             if resp.ok:
                 st.success("Store deleted.")
+                # Clear and unlock after deletion
+                st.session_state.store_id = ""
+                st.session_state.store_locked = False
                 st.rerun()
             else:
                 st.error(f"Delete failed: {resp.status_code} {resp.text}")
@@ -226,51 +246,35 @@ with meta_area:
 
 # 🔻 Place the chat input at the very bottom of the page (outside columns)
 question = st.chat_input("Ask a question about your documents…")
-
-# Check if we're currently processing a question
-if "processing_question" not in st.session_state:
-    st.session_state.processing_question = False
-
-if question and not st.session_state.processing_question:
-    # Add the user's question immediately and mark as processing
+if question:
     st.session_state.messages.append(("user", question))
-    st.session_state.processing_question = True
-    st.session_state.current_question = question
-    st.rerun()  # Show the user's question immediately
+    body = {
+        "store_id": st.session_state.store_id,
+        "question": question,
+        "k": st.session_state.k,
+        "history": st.session_state.messages,
+        "include_raw_chunks": True,
+    }
+    try:
+        resp = requests.post(f"{st.session_state.api_base}/query", json=body, timeout=120)
+        if not resp.ok:
+            st.session_state.messages.append(("assistant", f"Error: {resp.status_code} {resp.text}"))
+            st.rerun()
+        data = resp.json()
+        answer = data.get("answer", "")
+        retrieved_chunks = data.get("retrieved_chunks", [])
+        raw_chunks_payload = data.get("raw_chunks", []) or []
+        raw_chunks = [(rc.get("text", ""), rc.get("metadata", {})) for rc in raw_chunks_payload]
+        metadata = data.get("metadata", {})
 
-# If we're processing a question, handle the API call
-if st.session_state.processing_question and "current_question" in st.session_state:
-    with st.spinner("Thinking..."):
-        body = {
-            "store_id": st.session_state.store_id,
-            "question": st.session_state.current_question,
-            "k": st.session_state.k,
-            "history": st.session_state.messages,
-            "include_raw_chunks": True,
+        st.session_state.messages.append(("assistant", answer))
+        summaries = [chunk.get("summary", "") for chunk in retrieved_chunks]
+        st.session_state.latest = {
+            "retrieved": raw_chunks,
+            "summaries": summaries,
+            "rag_metadata": metadata,
         }
-        try:
-            resp = requests.post(f"{st.session_state.api_base}/query", json=body, timeout=120)
-            if not resp.ok:
-                st.session_state.messages.append(("assistant", f"Error: {resp.status_code} {resp.text}"))
-            else:
-                data = resp.json()
-                answer = data.get("answer", "")
-                retrieved_chunks = data.get("retrieved_chunks", [])
-                raw_chunks_payload = data.get("raw_chunks", []) or []
-                raw_chunks = [(rc.get("text", ""), rc.get("metadata", {})) for rc in raw_chunks_payload]
-                metadata = data.get("metadata", {})
-
-                st.session_state.messages.append(("assistant", answer))
-                summaries = [chunk.get("summary", "") for chunk in retrieved_chunks]
-                st.session_state.latest = {
-                    "retrieved": raw_chunks,
-                    "summaries": summaries,
-                    "rag_metadata": metadata,
-                }
-        except requests.RequestException as e:
-            st.session_state.messages.append(("assistant", f"Request failed: {e}"))
-        
-        # Reset processing state and rerun to show the answer
-        st.session_state.processing_question = False
-        del st.session_state.current_question
+        st.rerun()
+    except requests.RequestException as e:
+        st.session_state.messages.append(("assistant", f"Request failed: {e}"))
         st.rerun()
