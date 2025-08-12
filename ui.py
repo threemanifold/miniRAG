@@ -3,7 +3,6 @@ import os
 import time
 import uuid
 import requests
-import re
 
 import streamlit as st
 
@@ -21,8 +20,12 @@ with st.sidebar:
     api_base = st.text_input("API base URL", value=st.session_state.get("api_base", DEFAULT_API))
     st.session_state.api_base = api_base.rstrip("/")
 
-    # Store selection simplified: single Store ID field, locked when store exists
+    # Auto-generate a unique hidden Store ID for this session to avoid Chroma caching issues
     current_store = st.session_state.get("store_id", "")
+    if not current_store:
+        st.session_state.store_id = f"store_{uuid.uuid4().hex[:8]}"
+        current_store = st.session_state.store_id
+
     # Check if current store exists (per-run) to drive UI state immediately
     def _store_exists(store: str) -> bool:
         try:
@@ -31,23 +34,7 @@ with st.sidebar:
         except requests.RequestException:
             return False
 
-    # Store ID input, then compute existence based on current input
-    store_locked = st.session_state.get("store_locked", False)
-    def sanitize_store_id(raw: str) -> str:
-        s = (raw or "").strip()
-        # Replace any whitespace with underscore
-        s = re.sub(r"\s+", "_", s)
-        # Replace any disallowed characters with underscore to match API validation
-        s = re.sub(r"[^A-Za-z0-9_\-]", "_", s)
-        # Collapse multiple underscores
-        s = re.sub(r"_+", "_", s)
-        # Trim leading/trailing underscores
-        s = s.strip("_")
-        return s
-
-    new_store_input = st.text_input("Store ID", value=current_store, disabled=store_locked)
-    store_id = sanitize_store_id(new_store_input)
-    st.session_state.store_id = store_id
+    store_id = current_store
     store_exists = _store_exists(store_id)
     # Warning removed per request
 
@@ -58,6 +45,9 @@ with st.sidebar:
         st.success(st.session_state.get("build_success_msg"))
         # Clear after showing once
         st.session_state.build_success_msg = ""
+    if st.session_state.get("delete_success_msg"):
+        st.success(st.session_state.get("delete_success_msg"))
+        st.session_state.delete_success_msg = ""
     # File uploader resets after successful upload
     if "upload_nonce" not in st.session_state:
         st.session_state.upload_nonce = 0
@@ -121,7 +111,8 @@ with st.sidebar:
         with st.spinner("Deleting…"):
             resp = requests.delete(f"{st.session_state.api_base}/stores/{store_id}", timeout=30)
             if resp.ok:
-                st.success("Store deleted.")
+                # Persist a success message across rerun so user sees confirmation
+                st.session_state.delete_success_msg = "Store deleted."
                 # Clear and unlock after deletion
                 st.session_state.store_id = ""
                 st.session_state.store_locked = False
@@ -247,10 +238,17 @@ with meta_area:
 # 🔻 Place the chat input at the very bottom of the page (outside columns)
 question = st.chat_input("Ask a question about your documents…")
 if question:
+    # Append immediately and rerun so the user's message shows up right away
     st.session_state.messages.append(("user", question))
+    st.session_state.to_send = question
+    st.rerun()
+
+# If there is a pending question from the previous run, process it now
+pending = st.session_state.get("to_send")
+if pending:
     body = {
         "store_id": st.session_state.store_id,
-        "question": question,
+        "question": pending,
         "k": st.session_state.k,
         "history": st.session_state.messages,
         "include_raw_chunks": True,
@@ -259,6 +257,7 @@ if question:
         resp = requests.post(f"{st.session_state.api_base}/query", json=body, timeout=120)
         if not resp.ok:
             st.session_state.messages.append(("assistant", f"Error: {resp.status_code} {resp.text}"))
+            st.session_state.to_send = None
             st.rerun()
         data = resp.json()
         answer = data.get("answer", "")
@@ -274,7 +273,9 @@ if question:
             "summaries": summaries,
             "rag_metadata": metadata,
         }
+        st.session_state.to_send = None
         st.rerun()
     except requests.RequestException as e:
         st.session_state.messages.append(("assistant", f"Request failed: {e}"))
+        st.session_state.to_send = None
         st.rerun()
