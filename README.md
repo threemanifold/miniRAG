@@ -1,7 +1,7 @@
 ## Overview
 
 This project implements a minimal Retrieval‑Augmented Generation (RAG) system with:
-- A backend FastAPI service for store management, querying, and evaluation
+- A backend FastAPI service for vectorstore management, querying, and evaluation
 - A lightweight Streamlit admin UI for uploading documents, building vector stores, running queries, and basic evaluation (recall/latency)
 
 The aim is to demonstrate a clear, robust, and observable RAG pipeline with a minimal user experience for running experiments.
@@ -14,7 +14,7 @@ The aim is to demonstrate a clear, robust, and observable RAG pipeline with a mi
   echo "OPENAI_API_KEY=sk-..." > .env
   ```
 
-2) Option A: Run tests then spin up containers
+2) Option A: Run tests then spin up containers (see [Testing](#testing))
 - Use the helper script:
   ```bash
   ./scripts/test_then_spin_up.sh
@@ -39,7 +39,7 @@ The aim is to demonstrate a clear, robust, and observable RAG pipeline with a mi
 
 ## Using the Admin UI
 
-This UI is intentionally minimal and designed as an admin panel. The primary goal is functionality and clarity, with simple guardrails to keep the user on the correct path. A unique Store ID is auto‑generated per UI session to avoid local Chroma cache collisions; you can delete the store to reset and start fresh.
+This UI is intentionally minimal and designed as an admin panel. The primary goal is functionality and clarity, with simple guardrails to keep the user on the correct path.
 
 - Core flow (minimal)
   1. Upload one or more `.txt` files.
@@ -92,6 +92,9 @@ This UI is intentionally minimal and designed as an admin panel. The primary goa
   - Metadata: embeddings model, prompt preview, retrieval strategy, and the rewritten search query.
   - Evaluation: run retrieval accuracy and see Mean/Std Recall, plus Mean/Std Latency.
 
+- Further details
+  - A unique Store ID is auto‑generated per UI session to avoid local Chroma cache collisions; you can delete the store to reset and start fresh.
+
 ## Architecture
 
 ![Mini RAG architecture](mini_rag.drawio.png)
@@ -123,15 +126,20 @@ This system consumes a user prompt (string) and a small set of plain‑text docu
 ### Answer Generator
 - `answer_generator.py` builds a grounded, cited answer with `gpt-4o`, requiring claims to be supported by retrieved chunks and adding (chunk index: N) citations.
 - Prompt design: the LLM is instructed to ground answers strictly in retrieved chunks while still trying to infer the user’s intent.
+  The citation feature is implemented in the system prompt by directly asking LLM to tell which chunks it has used to produce an answer. This might be implemented in a more rigorous way but luckily `gpt-4o` is smart enough to get this right consistently.
 - Trade‑off: strict grounding can make the model reluctant to answer slightly misframed questions.
-   - Example: asking “How long a giraffe can be?” may be refused even if the chunks contain the information. The model expects the more correct form: “How tall a giraffe can be?”, due to conservative grounding.
+   - Example: asking “How long a giraffe can be?” may be refused even if the chunks contain the information. The model expects the more correct form: “How tall a giraffe can be?”, due to conservative grounding. This has been handled by asking the model to be slightly biased towards giving an answer.
 
 ### Summarizer
 - `summarizer.py` produces concise 2–3 sentence summaries of each retrieved chunk using `gpt-4o-mini` (batched calls).
 
 ## Evaluation
 
-Recall@k definition: For each question, recall@k is the fraction of expected information items (from a ground‑truth list) that are present within the top‑k retrieved chunks. If the ground truth lists M items and the judge finds m of them in the retrieved context, recall@k = m / M.
+There are several metrics to evaluate the retrieval accuracy of a RAG system, e.g. precision, recall@k. Here we focus on recall@k.
+
+recall@k definition: For each question, recall@k is the fraction of expected information items (from a ground‑truth list) that are present within the top‑k retrieved chunks. If the ground truth lists M items and the judge finds m of them in the retrieved context, recall@k = m / M.
+
+### Evaluation Architecture
 
 - ![Mini RAG evaluation](mini_rag_eval.drawio.png)
 
@@ -149,11 +157,11 @@ Recall@k definition: For each question, recall@k is the fraction of expected inf
 
 ## Further Improvements
 
-Current Limitations and Scope
+### Current Limitations and Scope
 
 Due to time constraints and the scope of this demonstration project, a deliberately minimal RAG architecture was chosen to focus on core functionality and observability. The current implementation makes several simplifying assumptions:
 
-- No hyperparameter tuning: The hyperparameters such as embedding models, chunk sizes, overlap ratios, and similarity thresholds are not tuned.
+- No hyperparameter tuning: The hyperparameters such as embedding models, chunk sizes, overlap ratios, and type of similarity scores are not tuned.
 - Basic chunking strategy: Simple character-based chunking without semantic boundary detection or document structure awareness.
 - Single retrieval strategy: Only similarity search is implemented, without more sophisticated methods like hybrid search or query expansion.
 - Limited evaluation dataset: The built-in evaluation uses a small synthetic dataset sufficient to demonstrate the concept but not large enough for reliable performance verification.
@@ -161,10 +169,14 @@ Due to time constraints and the scope of this demonstration project, a deliberat
 
 These design choices enable rapid prototyping and clear demonstration of RAG concepts while maintaining code clarity and ease of understanding.
 
+### Potential Improvements
+
+One important observation is that Evaluation Architecture presented above is quite generic and can be used to measure other aspects of the system such as end-to-end performance, proclivity to hallucinate etc.
+
 How to evaluate and iterate in a real‑world setting:
 
 - Metrics and procedures
-  - Precision@k in addition to Recall@k to penalize irrelevant retrievals.
+  - Precision in addition to recall@k to penalize irrelevant retrievals.
   - End‑to‑end evaluation over a ground‑truth dataset of (prompt, documents, final answer), scoring both retrieval and generation.
   - Hallucination evaluation: verify that final answers are supported by retrieved chunks.
   - Human‑in‑the‑loop review: sample a subset of interactions weekly for manual labeling (correctness, relevance, faithfulness) and use feedback to guide iteration.
@@ -225,6 +237,64 @@ Implemented behaviors
 - Request lifecycle
   - Middleware emits start/end logs with duration; headers include `X-Response-Time-ms` for server processing time.
 
+### How to observe handled errors
+
+- **Empty question (400)**
+  - Send a blank/whitespace question.
+  ```bash
+  curl -i -X POST http://localhost:8000/query \
+    -H 'Content-Type: application/json' \
+    -d '{"store_id":"demo","question":"   "}'
+  ```
+
+- **Invalid `store_id` format (400)**
+  - Only letters, numbers, `_` and `-` are allowed.
+  ```bash
+  curl -i -X POST http://localhost:8000/query \
+    -H 'Content-Type: application/json' \
+    -d '{"store_id":"bad id!","question":"q"}'
+  ```
+
+- **Missing vector store (404)**
+  ```bash
+  curl -i -X POST http://localhost:8000/query \
+    -H 'Content-Type: application/json' \
+    -d '{"store_id":"does_not_exist","question":"q"}'
+  ```
+
+- **Store already exists on build (409)**
+  - If you already built a store named `demo`, calling build again returns 409.
+  ```bash
+  curl -i -X POST http://localhost:8000/stores \
+    -H 'Content-Type: application/json' \
+    -d '{"store_id":"demo"}'
+  ```
+  - If you don't have a built store, you can simulate existence by creating the directory, then calling the endpoint:
+  ```bash
+  mkdir -p chroma_store_versions/demo
+  curl -i -X POST http://localhost:8000/stores \
+    -H 'Content-Type: application/json' \
+    -d '{"store_id":"demo"}'
+  ```
+
+- **Invalid upload type (400)**
+  - Only `.txt` files are accepted.
+  ```bash
+  curl -i -X POST 'http://localhost:8000/stores/demo/documents' \
+    -F 'files=@README.md'
+  ```
+
+
+
+- **Unknown store (404) on fetch/delete**
+  ```bash
+  curl -i http://localhost:8000/stores/does_not_exist
+  curl -i -X DELETE http://localhost:8000/stores/does_not_exist
+  ```
+
+- **Tip: tracing headers**
+  - Use `-i` to see `X-Request-ID` and `X-Response-Time-ms`. The UI also surfaces API errors inline (e.g., "Error: 4xx/5xx ...").
+
 How we’d strengthen in production
 - Timeouts, retries, and backoff for external calls (LLM API, vector DB) with clear retry budgets.
 - Rate limiting and input size limits to protect the service from abuse and runaway cost.
@@ -254,7 +324,7 @@ Recommended hardening for real‑world deployments
 - CORS/CSRF: lock CORS to trusted origins; if cookies/session used, add CSRF protections.
 - Auditability: maintain audit logs for store creation/deletion, uploads, and eval runs.
 
-## Testing Requirements
+## Testing
 
 What’s covered
 - Retrieval correctness
@@ -277,7 +347,7 @@ How to run
 
 Rationale
 - API tests use a stubbed pipeline to be deterministic, fast, and key-free; they verify contract shape and error mapping.
-- Retrieval accuracy uses a tiny fixture and an LLM judge to avoid maintaining human labels while still measuring recall.
+- Retrieval accuracy uses an LLM judge to avoid maintaining human labels while still measuring recall.
 
 Ideas for expanded testing in production
 - Larger golden datasets with human-verified answers for end-to-end regression baselines (recall/precision/F1, answer correctness and faithfulness).
